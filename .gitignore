@@ -18,3 +18,15 @@ env/
 # Archivos temporales de sistema
 .DS_Store
 Thumbs.db
+
+# Scripts de desarrollo / debug (no van en produccion)
+debug_*.py
+fix_*.py
+rewrite_*.py
+generate_report.py
+test_*.py
+*.bat
+
+# Imagenes sueltas en la raiz que no usa la app (el logo real esta en static/)
+/DJI*.jpg
+/Logo*.png
