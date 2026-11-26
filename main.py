@@ -26,11 +26,15 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, Tabl
 
 from core.kml_parser import parse_kml
 
+import os
+# ... (resto de los imports)
+
 app = Flask(__name__)
 CORS(app)
 
-PORT = 8080
-DEBUG = True
+# Puerto dinámico para Render, por defecto 8080
+PORT = int(os.environ.get("PORT", 8080))
+DEBUG = False # Siempre false en produccion
 
 DEFAULT_PARAMETERS = {
     "price_per_hectare": 200.0,   # USD por hectarea

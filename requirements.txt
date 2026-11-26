@@ -20,9 +20,13 @@ matplotlib==3.8.0
 seaborn==0.12.2
 plotly==5.17.0
 
+# ... tus dependencias actuales ...
 # Reportes PDF (informe de rentabilidad)
 reportlab>=4.0.0
 pillow>=10.0.0
+
+# Servidor de producción para Render
+gunicorn==21.2.0
 
 # Geometría de lotes (KML)
 shapely>=2.0.0
