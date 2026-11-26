@@ -26,15 +26,14 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, Tabl
 
 from core.kml_parser import parse_kml
 
-import os
-# ... (resto de los imports)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 app = Flask(__name__)
 CORS(app)
 
-# Puerto dinámico para Render, por defecto 8080
+# Puerto dinámico (Render inyecta PORT); 8080 para desarrollo local
 PORT = int(os.environ.get("PORT", 8080))
-DEBUG = False # Siempre false en produccion
+DEBUG = False
 
 DEFAULT_PARAMETERS = {
     "price_per_hectare": 200.0,   # USD por hectarea
@@ -338,7 +337,7 @@ def import_kml():
 @app.route("/api/load_default_kml", methods=["POST"])
 def load_default_kml():
     """Recarga el lote de ejemplo test_mapa.kml."""
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_mapa.kml")
+    path = os.path.join(BASE_DIR, "test_mapa.kml")
     if not os.path.isfile(path):
         return jsonify({"status": "error", "message": "No se encontro test_mapa.kml."}), 400
 
@@ -416,8 +415,9 @@ def report_pdf():
     elements = []
     
     # Agregar Logo
-    if os.path.exists("static/logo-prevuelo.png"):
-        elements.append(Image("static/logo-prevuelo.png", width=40*mm, height=40*mm))
+    logo_path = os.path.join(BASE_DIR, "static", "logo-prevuelo.png")
+    if os.path.isfile(logo_path):
+        elements.append(Image(logo_path, width=40 * mm, height=40 * mm))
         elements.append(Spacer(1, 10))
 
     title_style = styles["Title"]
@@ -578,7 +578,7 @@ def report_pdf():
 # Carga inicial del lote de ejemplo
 # ----------------------------------------------------------------------
 def _bootstrap():
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_mapa.kml")
+    path = os.path.join(BASE_DIR, "test_mapa.kml")
     if not os.path.isfile(path):
         print("Aviso: no se encontro test_mapa.kml; cargue un KML desde la interfaz.")
         return
@@ -597,5 +597,5 @@ _bootstrap()
 
 
 if __name__ == "__main__":
-    print(f"Reporte Predictivo de Rentabilidad en http://localhost:{PORT}")
-    app.run(port=PORT, debug=DEBUG)
+    print(f"Reporte Predictivo de Rentabilidad en http://0.0.0.0:{PORT}")
+    app.run(host="0.0.0.0", port=PORT, debug=DEBUG)
