@@ -1,0 +1,7 @@
+# Archivos pesados e instaladores
+*.msi
+*.pdf
+*.pptx
+*.qgz
+*.qmd
+

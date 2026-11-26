@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document id="root_doc">
+<Schema name="prueba" id="prueba">
+	<SimpleField name="fid" type="float"></SimpleField>
+</Schema>
+<Folder><name>prueba</name>
+  <Placemark id="prueba.1">
+	<name>Ambiente Norte</name>
+	<Style><LineStyle><color>ff0000ff</color></LineStyle><PolyStyle><fill>0</fill></PolyStyle></Style>
+      <Polygon><outerBoundaryIs><LinearRing><coordinates>-65.5674412775221,-33.9645847681655 -65.530184607101,-33.9718836796694 -65.5358562262202,-33.997506007375 -65.5759487062009,-33.9913443808772 -65.5674412775221,-33.9645847681655</coordinates></LinearRing></outerBoundaryIs></Polygon>
+  </Placemark>
+  <Placemark id="prueba.2">
+	<name>Ambiente Sur</name>
+	<Style><LineStyle><color>ff0000ff</color></LineStyle><PolyStyle><fill>0</fill></PolyStyle></Style>
+      <Polygon><outerBoundaryIs><LinearRing><coordinates>-65.5758509196643,-33.9919929941828 -65.5360517992933,-33.9982356440786 -65.5439725087529,-34.0273349301872 -65.5796645945893,-34.0082067175956 -65.5758509196643,-33.9919929941828</coordinates></LinearRing></outerBoundaryIs></Polygon>
+  </Placemark>
+</Folder>
+</Document></kml>

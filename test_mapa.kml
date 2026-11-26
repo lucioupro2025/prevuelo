@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Lote San Luis - Prescripción VRT Mavic 3M</name>
+    <description>Ambientación y prescripción fitosanitaria generada a partir de ortomosaico multiespectral DJI Mavic 3M (QGIS / WebODM). Formato estándar para control DJI RC Plus / DJI Agras T50.</description>
+    
+    <!-- Estilos de Ambientes y Marcadores -->
+    <Style id="styleAmbienteNorte">
+      <LineStyle>
+        <color>ff27ae60</color>
+        <width>2.5</width>
+      </LineStyle>
+      <PolyStyle>
+        <color>7f2ecc71</color>
+        <fill>1</fill>
+        <outline>1</outline>
+      </PolyStyle>
+    </Style>
+
+    <Style id="styleAmbienteSur">
+      <LineStyle>
+        <color>ffd35400</color>
+        <width>2.5</width>
+      </LineStyle>
+      <PolyStyle>
+        <color>7ff39c12</color>
+        <fill>1</fill>
+        <outline>1</outline>
+      </PolyStyle>
+    </Style>
+
+    <Style id="styleHome">
+      <IconStyle>
+        <color>ff00ffff</color>
+        <scale>1.2</scale>
+      </IconStyle>
+    </Style>
+
+    <Style id="styleObstacle">
+      <IconStyle>
+        <color>ff0000ff</color>
+        <scale>1.1</scale>
+      </IconStyle>
+    </Style>
+
+    <!-- Polígono 1: Ambiente Norte (Dosis Estándar 16.0 L/ha) -->
+    <Placemark>
+      <name>Ambiente Norte</name>
+      <description>Zona de manejo agronómico Norte. Loma con vigor vegetativo óptimo según NDVI Mavic 3M. Prescripción: 16.0 L/ha.</description>
+      <styleUrl>#styleAmbienteNorte</styleUrl>
+      <ExtendedData>
+        <Data name="Ambiente"><value>Ambiente Norte</value></Data>
+        <Data name="Dosis_L_ha"><value>16.0</value></Data>
+        <Data name="Cultivo"><value>Soja de Primera</value></Data>
+        <Data name="Tratamiento"><value>Fungicida + Coadyuvante</value></Data>
+        <Data name="Area_ha"><value>15.43</value></Data>
+      </ExtendedData>
+      <Polygon>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>
+              -65.4550,-33.6500,0
+              -65.4500,-33.6500,0
+              -65.4500,-33.6530,0
+              -65.4550,-33.6530,0
+              -65.4550,-33.6500,0
+            </coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+
+    <!-- Polígono 2: Ambiente Sur (Dosis Reforzada 24.0 L/ha) -->
+    <Placemark>
+      <name>Ambiente Sur</name>
+      <description>Zona de manejo agronómico Sur. Bajo con suelo somero y mayor presión de malezas. Prescripción VRT reforzada: 24.0 L/ha.</description>
+      <styleUrl>#styleAmbienteSur</styleUrl>
+      <ExtendedData>
+        <Data name="Ambiente"><value>Ambiente Sur</value></Data>
+        <Data name="Dosis_L_ha"><value>24.0</value></Data>
+        <Data name="Cultivo"><value>Soja de Primera</value></Data>
+        <Data name="Tratamiento"><value>Dosis Reforzada VRT</value></Data>
+        <Data name="Area_ha"><value>15.43</value></Data>
+      </ExtendedData>
+      <Polygon>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>
+              -65.4550,-33.6530,0
+              -65.4500,-33.6530,0
+              -65.4500,-33.6560,0
+              -65.4550,-33.6560,0
+              -65.4550,-33.6530,0
+            </coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+
+    <!-- Punto 1: Base de Operaciones / Home Helipad -->
+    <Placemark>
+      <name>Home Base</name>
+      <description>Helipad y estación de servicio de baterías/caldo en camioneta de apoyo. Piquete Noroeste fuera de la faja de aplicación.</description>
+      <styleUrl>#styleHome</styleUrl>
+      <Point>
+        <coordinates>-65.4555,-33.6505,0</coordinates>
+      </Point>
+    </Placemark>
+
+    <!-- Punto 2: Obstáculo - Isleta de Caldén/Chañar -->
+    <Placemark>
+      <name>Arbol Principal</name>
+      <description>Isleta de caldén nativo preservada según Ley de Bosques (OTBN). Radio de copa 5.5 m. Evasión radar obligatoria.</description>
+      <styleUrl>#styleObstacle</styleUrl>
+      <ExtendedData>
+        <Data name="Type"><value>tree</value></Data>
+        <Data name="Radius_m"><value>5.5</value></Data>
+        <Data name="Height_m"><value>8.5</value></Data>
+      </ExtendedData>
+      <Point>
+        <coordinates>-65.4525,-33.6515,0</coordinates>
+      </Point>
+    </Placemark>
+
+    <!-- Punto 3: Obstáculo - Poste de Tendido Eléctrico Rural -->
+    <Placemark>
+      <name>Poste Tendido Electrico</name>
+      <description>Poste de línea rural de media tensión. Radio de exclusión de seguridad: 3.5 m.</description>
+      <styleUrl>#styleObstacle</styleUrl>
+      <ExtendedData>
+        <Data name="Type"><value>pole</value></Data>
+        <Data name="Radius_m"><value>3.5</value></Data>
+        <Data name="Height_m"><value>10.0</value></Data>
+      </ExtendedData>
+      <Point>
+        <coordinates>-65.4510,-33.6545,0</coordinates>
+      </Point>
+    </Placemark>
+
+  </Document>
+</kml>

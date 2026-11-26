@@ -1,0 +1,48 @@
+# Requisitos del Simulador de Drones Agrícolas
+
+# Web Frontend
+pygame==2.5.2
+pygame-scipy==1.0.0
+scipy==1.11.4
+numpy==1.24.3
+pyopengl==3.0.3
+pymunk==2.2.1
+
+# Backend (Python)
+flask==2.3.3
+flask-cors==4.0.0
+websockets==12.0
+python-socketio==5.8.1
+
+# Análisis de Datos
+pandas==2.1.0
+matplotlib==3.8.0
+seaborn==0.12.2
+plotly==5.17.0
+
+# Reportes PDF (informe de rentabilidad)
+reportlab>=4.0.0
+pillow>=10.0.0
+
+# Geometría de lotes (KML)
+shapely>=2.0.0
+
+# Utilidades
+colorama==0.4.6
+configparser==6.0.3
+jsonargparse==2.3.0
+
+# Testing y Desarrollo
+pytest==7.4.3
+black==23.11.2
+flake8==6.1.1
+
+# Control de Versiones y Documentación
+# (se instalan manualmente)
+
+# Dependencias de tiempo de ejecución específicas del sistema
+# (instaladas por el sistema operativo)
+# - python3-dev
+# - libglfw3-dev
+# - libgl1-mesa-glx
+# - libglew-dev

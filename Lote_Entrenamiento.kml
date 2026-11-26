@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+  <name>Lote de Entrenamiento DJI T50</name>
+  <Folder>
+    <name>Ambientes</name>
+    <Placemark>
+      <name>Sector de Prueba (2.5 ha)</name>
+      <description>Dosis: 18.0 L/ha. Zona recortada para entrenamiento.</description>
+      <Style>
+        <LineStyle><color>ff00ff00</color><width>2</width></LineStyle>
+        <PolyStyle><color>4d00ff00</color></PolyStyle>
+      </Style>
+      <Polygon>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>
+              -65.5508,-33.9807,0 
+              -65.5491,-33.9807,0 
+              -65.5491,-33.9793,0 
+              -65.5508,-33.9793,0 
+              -65.5508,-33.9807,0
+            </coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+  </Folder>
+  <Folder>
+    <name>Puntos de Control</name>
+    <Placemark>
+      <name>Home Base</name>
+      <description>Punto de despegue y recarga (Trailer)</description>
+      <Point>
+        <coordinates>-65.5509,-33.9808,0</coordinates>
+      </Point>
+    </Placemark>
+  </Folder>
+</Document>
+</kml>
