@@ -9,14 +9,17 @@ costo operativo, ahorro estimado, ROI y riesgo de deriva.
 No incluye simulacion de vuelo ni control de aeronave.
 """
 
+import copy
 import io
 import math
 import os
 import re
+import secrets
+import time
 from datetime import datetime
 from xml.sax.saxutils import escape
 
-from flask import Flask, jsonify, render_template, request, send_file
+from flask import Flask, jsonify, render_template, request, send_file, session
 from flask_cors import CORS
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -46,12 +49,95 @@ DEFAULT_PARAMETERS = {
 DEFAULT_DOSE = 15.0               # L/ha si el KML no declara dosis
 DEFAULT_SWATH = 8.0               # m si el KML no declara ancho de faja
 
-report_state = {
-    "field": {},
-    "parameters": dict(DEFAULT_PARAMETERS),
-    "predictive_report": None,
-    "source_file": "test_mapa.kml",
-}
+# ----------------------------------------------------------------------
+# Estado por visitante (sesiones aisladas)
+# ----------------------------------------------------------------------
+app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
+
+_SESSIONS = {}
+SESSION_TTL = 3600  # 1 hora de inactividad
+_last_cleanup = 0.0
+
+# Plantilla con el lote de ejemplo, calculada una sola vez al arrancar.
+_DEFAULT_STATE = None
+
+
+def _new_state():
+    """Estado inicial de un visitante: copia del lote de ejemplo."""
+    global _DEFAULT_STATE
+    if _DEFAULT_STATE is None:
+        _init_default_state()
+    state = copy.deepcopy(_DEFAULT_STATE)
+    state["updated_at"] = time.time()
+    return state
+
+
+def _init_default_state():
+    """Parsea test_mapa.kml una vez y prepara la plantilla base."""
+    global _DEFAULT_STATE
+    path = os.path.join(BASE_DIR, "test_mapa.kml")
+    field = {}
+    report = None
+    if os.path.isfile(path):
+        try:
+            parsed = parse_kml(path, default_name="test_mapa.kml")
+            field = {
+                "doc_name": parsed["doc_name"],
+                "description": parsed["description"],
+                "hectares": parsed["hectares"],
+                "width": parsed["width"],
+                "height": parsed["height"],
+                "size": parsed["size"],
+                "total_area_m2": parsed["total_area_m2"],
+                "zones": parsed["zones"],
+                "obstacles": parsed["obstacles"],
+                "home_point": parsed["home_point"],
+                "gps_bounds": parsed["gps_bounds"],
+                "overlays": parsed.get("overlays", []),
+            }
+            report = calcular_informe_predictivo(
+                parsed, DEFAULT_PARAMETERS, DEFAULT_PARAMETERS["wind_speed"]
+            )
+            print(
+                f"Lote inicial cargado: {report['hectares']} ha, "
+                f"{report['total_liters']} L, ROI {report['roi_percent']}%."
+            )
+        except Exception as exc:
+            print(f"Aviso: no se pudo cargar test_mapa.kml: {exc}")
+    _DEFAULT_STATE = {
+        "field": field,
+        "parameters": dict(DEFAULT_PARAMETERS),
+        "predictive_report": report,
+        "source_file": "test_mapa.kml",
+        "updated_at": time.time(),
+    }
+
+
+def _cleanup_sessions():
+    """Descarta sesiones inactivas para no acumular memoria."""
+    global _last_cleanup
+    now = time.time()
+    if now - _last_cleanup < 300:
+        return
+    _last_cleanup = now
+    for sid in list(_SESSIONS):
+        if now - _SESSIONS[sid]["updated_at"] > SESSION_TTL:
+            _SESSIONS.pop(sid, None)
+
+
+def get_state():
+    """Devuelve el estado privado del visitante actual."""
+    _cleanup_sessions()
+    sid = session.get("sid")
+    if not sid:
+        sid = secrets.token_hex(16)
+        session["sid"] = sid
+    state = _SESSIONS.get(sid)
+    if state is None or time.time() - state["updated_at"] > SESSION_TTL:
+        state = _new_state()
+        _SESSIONS[sid] = state
+    state["updated_at"] = time.time()
+    return state
 
 
 # ----------------------------------------------------------------------
@@ -242,25 +328,25 @@ def calcular_informe_predictivo(parsed_kml, parameters, wind_speed):
     }
 
 
-def build_payload(message=None):
-    field = report_state["field"]
+def build_payload(state, message=None):
+    field = state["field"]
     return {
         "status": "success",
         "message": message,
         "doc_name": field.get("doc_name", ""),
         "description": field.get("description", ""),
         "field": field,
-        "parameters": report_state["parameters"],
-        "predictive_report": report_state["predictive_report"],
-        "report": report_state["predictive_report"],
-        "source_file": report_state["source_file"],
+        "parameters": state["parameters"],
+        "predictive_report": state["predictive_report"],
+        "report": state["predictive_report"],
+        "source_file": state["source_file"],
     }
 
 
-def load_kml(kml_source, filename):
-    """Parsea el KML, actualiza el estado y recalcula el informe."""
+def load_kml(state, kml_source, filename):
+    """Parsea el KML, actualiza el estado del visitante y recalcula el informe."""
     parsed = parse_kml(kml_source, default_name=filename)
-    report_state["field"] = {
+    state["field"] = {
         "doc_name": parsed["doc_name"],
         "description": parsed["description"],
         "hectares": parsed["hectares"],
@@ -274,22 +360,22 @@ def load_kml(kml_source, filename):
         "gps_bounds": parsed["gps_bounds"],
         "overlays": parsed.get("overlays", []),
     }
-    report_state["source_file"] = filename
-    report_state["predictive_report"] = calcular_informe_predictivo(
+    state["source_file"] = filename
+    state["predictive_report"] = calcular_informe_predictivo(
         parsed,
-        report_state["parameters"],
-        report_state["parameters"]["wind_speed"],
+        state["parameters"],
+        state["parameters"]["wind_speed"],
     )
-    return build_payload()
+    return build_payload(state)
 
 
-def recompute_report():
-    report_state["predictive_report"] = calcular_informe_predictivo(
-        report_state["field"],
-        report_state["parameters"],
-        report_state["parameters"]["wind_speed"],
+def recompute_report(state):
+    state["predictive_report"] = calcular_informe_predictivo(
+        state["field"],
+        state["parameters"],
+        state["parameters"]["wind_speed"],
     )
-    return build_payload()
+    return build_payload(state)
 
 
 # ----------------------------------------------------------------------
@@ -302,14 +388,14 @@ def index():
 
 @app.route("/api/report", methods=["GET"])
 def get_report():
-    """Informe actual: lote, parametros y metricas de rentabilidad."""
-    return jsonify(build_payload())
+    """Informe del visitante: lote, parametros y metricas de rentabilidad."""
+    return jsonify(build_payload(get_state()))
 
 
 @app.route("/api/status", methods=["GET"])
 def get_status():
     """Alias de compatibilidad de /api/report."""
-    return jsonify(build_payload())
+    return jsonify(build_payload(get_state()))
 
 
 @app.route("/api/import_kml", methods=["POST"])
@@ -320,7 +406,7 @@ def import_kml():
         return jsonify({"status": "error", "message": "No se recibio ningun archivo KML."}), 400
 
     try:
-        payload = load_kml(file, file.filename)
+        payload = load_kml(get_state(), file, file.filename)
         payload["message"] = (
             f"KML '{payload['doc_name']}' analizado: "
             f"{payload['report']['hectares']} ha, "
@@ -342,7 +428,7 @@ def load_default_kml():
         return jsonify({"status": "error", "message": "No se encontro test_mapa.kml."}), 400
 
     try:
-        payload = load_kml(path, "test_mapa.kml")
+        payload = load_kml(get_state(), path, "test_mapa.kml")
         payload["message"] = "Lote de ejemplo test_mapa.kml cargado."
         return jsonify(payload)
     except Exception as exc:
@@ -352,7 +438,8 @@ def load_default_kml():
 @app.route("/api/report/config", methods=["POST"])
 def configure_report():
     """Actualiza precio, ahorro, velocidad y viento; recalcula el informe."""
-    if not report_state["field"]:
+    state = get_state()
+    if not state["field"]:
         return jsonify({"status": "error", "message": "Cargue un KML antes de configurar."}), 400
 
     data = request.get_json(silent=True) or {}
@@ -361,33 +448,33 @@ def configure_report():
         price = _as_float(data.get("price_per_hectare"), None)
         if price is None or price <= 0 or price > 100000:
             return jsonify({"status": "error", "message": "Precio por hectarea invalido."}), 400
-        report_state["parameters"]["price_per_hectare"] = round(price, 2)
+        state["parameters"]["price_per_hectare"] = round(price, 2)
 
     if "savings_percent" in data:
         savings = _as_float(data.get("savings_percent"), None)
         if savings is None or savings < 0 or savings > 100:
             return jsonify({"status": "error", "message": "Porcentaje de ahorro invalido."}), 400
-        report_state["parameters"]["savings_percent"] = round(savings, 1)
+        state["parameters"]["savings_percent"] = round(savings, 1)
 
     if "application_speed" in data:
         speed = _as_float(data.get("application_speed"), None)
         if speed is None or speed < 0.5 or speed > 20:
             return jsonify({"status": "error", "message": "Velocidad de labor invalida."}), 400
-        report_state["parameters"]["application_speed"] = round(speed, 2)
+        state["parameters"]["application_speed"] = round(speed, 2)
 
     if "swath_width" in data:
         swath = _as_float(data.get("swath_width"), None)
         if swath is None or swath < 4 or swath > 14:
             return jsonify({"status": "error", "message": "Separacion entre pasadas invalida."}), 400
-        report_state["parameters"]["swath_width"] = round(swath, 2)
+        state["parameters"]["swath_width"] = round(swath, 2)
 
     if "wind_speed" in data:
         wind = _as_float(data.get("wind_speed"), None)
         if wind is None or wind < 0 or wind > 15:
             return jsonify({"status": "error", "message": "Velocidad de viento invalida."}), 400
-        report_state["parameters"]["wind_speed"] = round(wind, 1)
+        state["parameters"]["wind_speed"] = round(wind, 1)
 
-    payload = recompute_report()
+    payload = recompute_report(state)
     payload["message"] = "Parametros actualizados y reporte recalculado."
     return jsonify(payload)
 
@@ -395,12 +482,13 @@ def configure_report():
 @app.route("/api/report_pdf", methods=["GET"])
 def report_pdf():
     """Genera y descarga el informe PDF del lote actual."""
-    report = report_state.get("predictive_report")
-    field = report_state.get("field") or {}
+    state = get_state()
+    report = state.get("predictive_report")
+    field = state.get("field") or {}
     if not report or not field:
         return jsonify({"status": "error", "message": "No hay informe disponible. Cargue un KML."}), 400
 
-    params = report_state["parameters"]
+    params = state["parameters"]
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf,
@@ -575,25 +663,9 @@ def report_pdf():
 
 
 # ----------------------------------------------------------------------
-# Carga inicial del lote de ejemplo
+# Carga inicial del lote de ejemplo (plantilla para nuevas sesiones)
 # ----------------------------------------------------------------------
-def _bootstrap():
-    path = os.path.join(BASE_DIR, "test_mapa.kml")
-    if not os.path.isfile(path):
-        print("Aviso: no se encontro test_mapa.kml; cargue un KML desde la interfaz.")
-        return
-    try:
-        load_kml(path, "test_mapa.kml")
-        report = report_state["predictive_report"]
-        print(
-            f"Lote inicial cargado: {report['hectares']} ha, "
-            f"{report['total_liters']} L, ROI {report['roi_percent']}%."
-        )
-    except Exception as exc:
-        print(f"Aviso: no se pudo cargar test_mapa.kml: {exc}")
-
-
-_bootstrap()
+_init_default_state()
 
 
 if __name__ == "__main__":
