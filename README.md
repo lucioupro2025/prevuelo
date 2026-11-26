@@ -4,6 +4,10 @@ Herramienta de análisis pre-aplicación: toma un **lote real en formato KML** (
 
 El resultado se muestra en pantalla desde el primer segundo y puede descargarse como **informe PDF**.
 
+> 🌐 **Demo online (gratis, sin instalar nada):** [https://prevuelo.onrender.com](https://prevuelo.onrender.com)
+>
+> Cada visitante tiene una **sesión independiente**: puede cargar su propio KML y mover las variables sin afectar a los demás. El servidor gratuito se duerme tras ~15 min de inactividad; la primera visita puede tardar ~30 s en despertar.
+
 ---
 
 ## Índice
@@ -17,6 +21,7 @@ El resultado se muestra en pantalla desde el primer segundo y puede descargarse 
 7. [Estructura del proyecto](#7-estructura-del-proyecto)
 8. [Instalación y puesta en marcha](#8-instalación-y-puesta-en-marcha)
 9. [Problemas comunes](#9-problemas-comunes)
+10. [Documentación adicional](#10-documentación-adicional)
 
 ---
 
@@ -30,7 +35,7 @@ El flujo de trabajo es deliberadamente corto:
 4. **Leer el reporte** — ROI, superficie, caldo total, costo operativo, ahorro y detalle por ambiente.
 5. **Descargar** — botón **Descargar PDF** con el resumen y la configuración recomendada.
 
-El cálculo se ejecuta en el servidor (`calcular_informe_predictivo()` en `main.py`) y se guarda en `report_state["predictive_report"]`, por lo que viaja en cada respuesta de `/api/report` y se mantiene sincronizado con la interfaz.
+El cálculo se ejecuta en el servidor (`calcular_informe_predictivo()` en `main.py`) y se guarda en el estado privado de cada visitante, por lo que viaja en cada respuesta de `/api/report` y se mantiene sincronizado con la interfaz. Dos personas pueden usar la herramienta al mismo tiempo sin compartir lote ni variables.
 
 ---
 
@@ -146,6 +151,8 @@ Cada ambiente puede declarar `target_dose_l_ha` (o `dosis_l_ha`, `dosis`, `rate`
 | `/api/report/config` | `POST` | Actualiza variables y recalcula el informe (JSON). |
 | `/api/report_pdf` | `GET` | Genera y descarga el informe PDF del lote actual. |
 
+Todos los ejemplos usan `localhost:8080` para desarrollo local. En la demo online, reemplazalo por `https://prevuelo.onrender.com`.
+
 ### Ejemplo: consumir el informe
 
 ```bash
@@ -211,9 +218,9 @@ curl -X POST -F "kml_file=@mi_lote.kml" http://localhost:8080/api/import_kml
 ## 7. Estructura del proyecto
 
 ```
-E:\Drone\
-├── main.py                  # Servidor Flask, estado, cálculo del informe y PDF
-├── requirements.txt         # Dependencias del proyecto
+prevuelo/
+├── main.py                  # Servidor Flask, sesiones, cálculo del informe y PDF
+├── requirements.txt         # Dependencias de producción
 ├── README.md                # Este documento
 ├── Que es esto.md           # Descripción para operadores
 ├── test_mapa.kml            # Lote real por defecto (San Luis)
@@ -228,6 +235,7 @@ E:\Drone\
 ### Tecnologías
 
 - **Backend:** Python 3.10+, Flask, Flask-CORS.
+- **Servidor WSGI:** Gunicorn (despliegue en Render.com).
 - **Geometría:** Shapely (proyección WGS84 → metros y cálculo de superficies).
 - **Reportes:** ReportLab + Pillow (PDF A4).
 - **Frontend:** HTML5, CSS3 y JavaScript sin dependencias; mapa en canvas con tiles de Esri/OpenStreetMap.
@@ -239,7 +247,7 @@ E:\Drone\
 ### 1. Requisitos
 
 - Python 3.10 o superior.
-- Las dependencias de `requirements.txt` (incluye `flask`, `shapely`, `reportlab` y `pillow`).
+- Las dependencias de `requirements.txt` (`flask`, `flask-cors`, `shapely`, `reportlab`, `pillow` y `gunicorn`).
 
 ### 2. Instalar dependencias
 
@@ -261,7 +269,20 @@ http://localhost:8080
 
 Al iniciar, el servidor carga `test_mapa.kml` y calcula el informe automáticamente, por lo que la pantalla ya muestra el mapa y los KPIs sin necesidad de subir ningún archivo.
 
-> El servidor corre en modo debug (`DEBUG = True`) con recarga automática: los cambios en `.py` reinician el proceso. Los cambios en `templates/index.html` solo requieren refrescar el navegador.
+> El servidor corre con `DEBUG = False` y escucha en `0.0.0.0`. El puerto se toma de la variable de entorno `PORT` (por defecto `8080`), lo que permite el despliegue en Render. Para desarrollo local podés cambiar `DEBUG = True` en `main.py` si querés recarga automática; los cambios en `templates/index.html` solo requieren refrescar el navegador.
+
+### 5. Despliegue (Render.com)
+
+El repositorio está conectado a Render con esta configuración:
+
+| Campo | Valor |
+| :--- | :--- |
+| **Runtime** | Python 3 |
+| **Build Command** | `pip install -r requirements.txt` |
+| **Start Command** | `gunicorn main:app --bind 0.0.0.0:$PORT` |
+| **Plan** | Free |
+
+Cada push a `main` dispara un deploy automático. La URL pública es [https://prevuelo.onrender.com](https://prevuelo.onrender.com).
 
 ---
 
@@ -275,6 +296,8 @@ Al iniciar, el servidor carga `test_mapa.kml` y calcula el informe automáticame
 | `GET /api/report_pdf` devuelve 400 | No hay informe calculado | Cargar un KML (o recargar el lote de ejemplo) primero. |
 | El puerto 8080 está ocupado | Proceso anterior activo | `netstat -ano | findstr :8080` y cerrar el PID con `taskkill /F /PID <pid>`. |
 | Error al importar `reportlab` / `shapely` | Dependencias faltantes | `pip install -r requirements.txt`. |
+| La demo online tarda en abrir | El plan gratuito duerme el servidor tras ~15 min | Esperar ~30 s; despierta automáticamente. |
+| Otro usuario cambió mis variables | No aplica: cada visitante tiene sesión propia | Si volviste a abrir el navegador, se creó una sesión nueva con el lote de ejemplo. |
 
 ---
 
@@ -284,4 +307,4 @@ Al iniciar, el servidor carga `test_mapa.kml` y calcula el informe automáticame
 
 ---
 
-*Herramienta de análisis para agricultura de precisión.*
+*Herramienta de análisis para agricultura de precisión · Desarrollada por [guruweb.com.ar](https://guruweb.com.ar) · WhatsApp: +54 9 2657 284903*
