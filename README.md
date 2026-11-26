@@ -215,18 +215,14 @@ E:\Drone\
 ├── main.py                  # Servidor Flask, estado, cálculo del informe y PDF
 ├── requirements.txt         # Dependencias del proyecto
 ├── README.md                # Este documento
-├── USER_MANUAL.md           # Manual orientado a operadores
-├── PROGRESS_REPORT.md       # Bitácora de desarrollo
+├── Que es esto.md           # Descripción para operadores
 ├── test_mapa.kml            # Lote real por defecto (San Luis)
 ├── templates/
 │   └── index.html           # Interfaz: mapa, KPIs, configuración ideal y variables
 ├── static/
-│   └── logo.png             # Logo de la aplicación
+│   └── logo-prevuelo.png    # Logo de la aplicación
 └── core/
-    ├── kml_parser.py        # Parseo y proyección de KML (Shapely)
-    ├── drone.py             # Módulos heredados del simulador (no usados por el reporte)
-    ├── physics.py           # Módulos heredados del simulador (no usados por el reporte)
-    └── agriculture.py       # Módulos heredados del simulador (no usados por el reporte)
+    └── kml_parser.py        # Parseo y proyección de KML (Shapely)
 ```
 
 ### Tecnologías
@@ -284,8 +280,7 @@ Al iniciar, el servidor carga `test_mapa.kml` y calcula el informe automáticame
 
 ## 10. Documentación adicional
 
-- **[USER_MANUAL.md](USER_MANUAL.md)** — guía orientada a operadores.
-- **[PROGRESS_REPORT.md](PROGRESS_REPORT.md)** — bitácora de desarrollo y fases del proyecto.
+- **[Que es esto.md](Que%20es%20esto.md)** — descripción del proyecto para operadores.
 
 ---
 
