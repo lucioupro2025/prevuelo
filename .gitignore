@@ -5,3 +5,16 @@
 *.qgz
 *.qmd
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Entornos virtuales
+venv/
+env/
+.venv/
+
+# Archivos temporales de sistema
+.DS_Store
+Thumbs.db
