@@ -44,10 +44,12 @@ DEFAULT_PARAMETERS = {
     "application_speed": 6.5,     # m/s
     "swath_width": 8.0,           # m entre lineas de pasada
     "wind_speed": 4.0,            # m/s
+    "droplet_diameter": 300.0,    # micrones (Diámetro estándar de gota)
 }
 
 DEFAULT_DOSE = 15.0               # L/ha si el KML no declara dosis
 DEFAULT_SWATH = 8.0               # m si el KML no declara ancho de faja
+DEFAULT_DROPLET = 300.0           # micrones si el KML no declara diámetro
 
 # ----------------------------------------------------------------------
 # Estado por visitante (sesiones aisladas)
@@ -94,6 +96,7 @@ def _init_default_state():
                 "home_point": parsed["home_point"],
                 "gps_bounds": parsed["gps_bounds"],
                 "overlays": parsed.get("overlays", []),
+                "droplet_diameter": parsed.get("droplet_diameter", DEFAULT_DROPLET),
             }
             report = calcular_informe_predictivo(
                 parsed, DEFAULT_PARAMETERS, DEFAULT_PARAMETERS["wind_speed"]
@@ -170,6 +173,7 @@ def calcular_informe_predictivo(parsed_kml, parameters, wind_speed):
     - El costo operativo usa el precio por hectarea configurado.
     - El ahorro aplica el porcentaje de ahorro sobre el caldo total.
     - El ROI relaciona el ahorro economico con el costo operativo.
+    - El diametro de gota afecta la deriva y la cobertura según condiciones de viento.
     """
     hectares = max(0.0, _as_float(parsed_kml.get("hectares"), 0.0))
     zones = parsed_kml.get("zones") or []
@@ -180,6 +184,7 @@ def calcular_informe_predictivo(parsed_kml, parameters, wind_speed):
     speed = max(0.5, _as_float(parameters.get("application_speed"), 6.5))
     swath = _clamp(_as_float(parameters.get("swath_width"), DEFAULT_SWATH), 4.0, 14.0)
     wind = max(0.0, _as_float(wind_speed, 4.0))
+    droplet = max(50.0, min(800.0, _as_float(parameters.get("droplet_diameter"), DEFAULT_DROPLET)))
 
     total_liters = 0.0
     total_area_m2 = 0.0
@@ -220,6 +225,10 @@ def calcular_informe_predictivo(parsed_kml, parameters, wind_speed):
     cost_savings = savings_liters * price_per_liter
     roi_percent = (cost_savings / cost_total * 100.0) if cost_total > 0 else 0.0
     drift_estimate = _clamp(wind * 5.0, 5.0, 30.0)
+    
+    # Ajuste de deriva según diámetro de gota (gotas más pequeñas = más deriva)
+    droplet_factor = _clamp((400.0 - droplet) / 400.0, 0.5, 1.5)
+    drift_estimate = _clamp(drift_estimate * droplet_factor, 5.0, 35.0)
 
     # Dimensiones reales del lote (el parser agrega 25 m de margen por lado).
     field_width = max(0.0, _as_float(parsed_kml.get("width"), 0.0) - 50.0)
@@ -274,7 +283,9 @@ def calcular_informe_predictivo(parsed_kml, parameters, wind_speed):
     if wind > 6:
         altitude = max(2.0, altitude - 0.5)
 
-    flow_rate = average_dose * swath * speed * 0.006
+    # Ajustar flujo según diámetro de gota (gotas más pequeñas = mayor superficie)
+    droplet_surface_factor = _clamp(droplet / 200.0, 0.7, 1.4)
+    flow_rate = average_dose * swath * speed * 0.006 * droplet_surface_factor
     tank_refills = int(math.ceil(total_liters / 40.0)) if total_liters > 0 else 0
     battery_cycles = int(math.ceil(application_time_hours * 60.0 / 12.0)) if application_time_hours > 0 else 0
 
@@ -283,14 +294,20 @@ def calcular_informe_predictivo(parsed_kml, parameters, wind_speed):
         notes.append("Viento por encima del limite operativo de 8 m/s: suspender la aplicacion.")
     elif wind > 5:
         notes.append("Reducir la altura de aplicacion y priorizar horarios de bajo viento.")
-    if drift_estimate > 20:
-        notes.append("Deriva estimada alta: usar boquillas antideriva y verificar la direccion del viento.")
+    if drift_estimate > 25:
+        notes.append("Deriva estimada alta: usar boquillas antideriva, aumentar diámetro de gota y verificar la direccion del viento.")
+    elif drift_estimate > 20:
+        notes.append("Deriva moderada: considerar aumentar diámetro de gota si es posible.")
+    if droplet < 200:
+        notes.append("Diámetro de gota pequeño: aumentar riesgo de deriva. Considerar viento más calmado o gotas más grandes.")
+    elif droplet > 500:
+        notes.append("Diámetro de gota grande: mejor control de deriva pero menor cobertura. Asegurar suficiente superposición de pasadas.")
     if tank_refills > 0:
         notes.append(f"Prever {tank_refills} recargas de tanque de 40 L.")
     if len(zone_breakdown) > 1:
         notes.append("El lote tiene dosis variables por ambiente: respetar la prescripcion de cada zona.")
     if flow_rate > 24:
-        notes.append("El caudal requerido supera el maximo de la maquina: reducir velocidad o dosis.")
+        notes.append("El caudal requerido supera el maximo de la maquina: reducir velocidad, dosis o aumentar diámetro de gota.")
 
     return {
         "hectares": round(hectares, 2),
@@ -312,6 +329,7 @@ def calcular_informe_predictivo(parsed_kml, parameters, wind_speed):
         "application_speed": round(speed, 2),
         "field_width_m": round(field_width, 1),
         "field_height_m": round(field_height, 1),
+        "droplet_diameter": round(droplet, 1),
         "recommended": {
             "altitude_m": round(altitude, 1),
             "speed_m_s": round(recommended_speed, 1),
@@ -323,6 +341,8 @@ def calcular_informe_predictivo(parsed_kml, parameters, wind_speed):
             "battery_cycles": battery_cycles,
             "wind_status": wind_status,
             "wind_label": wind_label,
+            "droplet_diameter_microns": round(droplet, 1),
+            "drift_adjustment_factor": round(droplet_factor, 2),
             "notes": notes,
         },
     }
@@ -474,6 +494,12 @@ def configure_report():
             return jsonify({"status": "error", "message": "Velocidad de viento invalida."}), 400
         state["parameters"]["wind_speed"] = round(wind, 1)
 
+    if "droplet_diameter" in data:
+        droplet = _as_float(data.get("droplet_diameter"), None)
+        if droplet is None or droplet < 50 or droplet > 800:
+            return jsonify({"status": "error", "message": "Diámetro de gota invalido (50-800 micrones)."}), 400
+        state["parameters"]["droplet_diameter"] = round(droplet, 1)
+
     payload = recompute_report(state)
     payload["message"] = "Parametros actualizados y reporte recalculado."
     return jsonify(payload)
@@ -541,6 +567,7 @@ def report_pdf():
         ["Ahorro economico estimado", f"USD {report['cost_savings_usd']}"],
         ["ROI / Retorno de inversion", f"{report['roi_percent']} %"],
         ["Riesgo de deriva por viento", f"{report['drift_estimate_percent']} %"],
+        ["Diámetro de gota configurado", f"{report.get('droplet_diameter', 300)} micrones"],
         ["Ambientes / obstaculos", f"{report['zone_count']} / {report['obstacle_count']}"],
     ]
     summary_table = Table(summary, colWidths=[100 * mm, 62 * mm])
@@ -576,6 +603,7 @@ def report_pdf():
             ["Recargas de tanque (40 L)", f"{recommended.get('tank_refills', 0)}"],
             ["Baterias estimadas (12 min)", f"{recommended.get('battery_cycles', 0)}"],
             ["Estado del viento", recommended.get("wind_label", "-")],
+            ["Diámetro de gota sugerido", f"{recommended.get('droplet_diameter_microns', 300)} μm"],
         ]
         rec_table = Table(rec_rows, colWidths=[100 * mm, 62 * mm])
         rec_table.setStyle(TableStyle([
@@ -635,7 +663,8 @@ def report_pdf():
         f"ahorro {params['savings_percent']}% &nbsp;|&nbsp; "
         f"velocidad {params['application_speed']} m/s &nbsp;|&nbsp; "
         f"pasadas {params.get('swath_width', 8)} m &nbsp;|&nbsp; "
-        f"viento {params['wind_speed']} m/s</font>",
+        f"viento {params['wind_speed']} m/s &nbsp;|&nbsp; "
+        f"gota {params.get('droplet_diameter', 300)} μm</font>",
         styles["Normal"],
     ))
     elements.append(Spacer(1, 6))

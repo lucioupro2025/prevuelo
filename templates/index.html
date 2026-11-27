@@ -860,6 +860,17 @@
                             </select>
                         </div>
                         <div class="field">
+                            <label for="p-droplet">Diámetro de gota (micrones)</label>
+                            <select id="p-droplet">
+                                <option value="150">150 · Muy pequeño (alto riesgo)</option>
+                                <option value="200">200 · Pequeño (viento moderado)</option>
+                                <option value="300" selected>300 · Estándar (equilibrio)</option>
+                                <option value="400">400 · Grande (bajo viento)</option>
+                                <option value="500">500 · Muy grande (control total)</option>
+                                <option value="600">600 · Extra grande (máximo control)</option>
+                            </select>
+                        </div>
+                        <div class="field">
                             <label for="p-swath">Separación entre pasadas</label>
                             <select id="p-swath">
                                 <option value="6">6 m</option>
@@ -1026,6 +1037,7 @@
                 setControl("p-speed", params.application_speed != null ? params.application_speed : "6.5");
                 setControl("p-swath", params.swath_width != null ? params.swath_width : "8");
                 setControl("p-wind", params.wind_speed != null ? params.wind_speed : "4");
+                setControl("p-droplet", params.droplet_diameter != null ? params.droplet_diameter : "300");
 
                 setText("map-meta",
                     (report.field_width_m != null ? nf.format(report.field_width_m) : "—") + " × " +
@@ -1533,7 +1545,8 @@
                     savings_percent: Number($("p-savings").value),
                     application_speed: Number($("p-speed").value),
                     swath_width: Number($("p-swath").value),
-                    wind_speed: Number($("p-wind").value)
+                    wind_speed: Number($("p-wind").value),
+                    droplet_diameter: Number($("p-droplet").value),
                 };
             }
 
@@ -1636,7 +1649,7 @@
                 });
 
                 /* Recálculo automático al cambiar cualquier variable */
-                ["p-wind", "p-swath", "p-speed"].forEach(function (id) {
+                ["p-wind", "p-swath", "p-speed", "p-droplet"].forEach(function (id) {
                     $(id).addEventListener("change", function () { scheduleRecalc(0); });
                 });
                 ["p-price", "p-savings"].forEach(function (id) {
